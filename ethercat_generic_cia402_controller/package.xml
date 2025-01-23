@@ -15,6 +15,7 @@
   <depend>rclcpp_lifecycle</depend>
   <depend>realtime_tools</depend>
   <depend>ethercat_msgs</depend>
+  <depend>ethercat_controller_msgs</depend>
   <depend>std_srvs</depend>
 
   <build_depend>pluginlib</build_depend>
