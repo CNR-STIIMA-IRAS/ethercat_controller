@@ -164,12 +164,12 @@ controller_interface::return_type CiA402Controller::update(
     bool fault_present = false;
     for (auto i = 0ul; i < dof_names_.size(); i++) {
       msg.dof_names[i] = dof_names_[i];
-      msg.modes_of_operation[i] = mode_of_operation_str(state_interfaces_[2 * i].get_value());
-      msg.status_words[i] = state_interfaces_[2 * i + 1].get_value();
-      status_words_[i] = state_interfaces_[2 * i + 1].get_value();
-      msg.drive_states[i] = device_state_str(state_interfaces_[2 * i + 1].get_value());
-      actual_state_[i].store(state_str_to_int(device_state_str(state_interfaces_[2 * i + 1].get_value())));
-      if (state_str_to_int(device_state_str(state_interfaces_[2 * i + 1].get_value())) == ethercat_controller_msgs::msg::Cia402DriveStates::STATE_FAULT)
+      msg.modes_of_operation[i] = mode_of_operation_str(state_interfaces_[2 * i].get_optional().value());
+      msg.status_words[i] = state_interfaces_[2 * i + 1].get_optional().value();
+      status_words_[i] = state_interfaces_[2 * i + 1].get_optional().value();
+      msg.drive_states[i] = device_state_str(state_interfaces_[2 * i + 1].get_optional().value());
+      actual_state_[i].store(state_str_to_int(device_state_str(state_interfaces_[2 * i + 1].get_optional().value())));
+      if (state_str_to_int(device_state_str(state_interfaces_[2 * i + 1].get_optional().value())) == ethercat_controller_msgs::msg::Cia402DriveStates::STATE_FAULT)
       {
         fault_present = true;
       }
@@ -203,9 +203,11 @@ controller_interface::return_type CiA402Controller::update(
   // auto reset_fault_request = rt_reset_fault_srv_ptr_.readFromRT();
   auto sds_request = rt_sds_srv_ptr_.readFromRT();
 
+  auto ok = true;
+
   for (auto i = 0ul; i < dof_names_.size(); i++) {
     if (!moo_request || !(*moo_request)) {
-      mode_ops_[i] = state_interfaces_[2 * i].get_value();
+      mode_ops_[i] = state_interfaces_[2 * i].get_optional().value();
     } else {
       if (dof_names_[i] == (*moo_request)->dof_name) {
         mode_ops_[i] = (*moo_request)->mode_of_operation;
@@ -250,7 +252,7 @@ controller_interface::return_type CiA402Controller::update(
           control_words_[i] = calc_controlword(
             actual_state,
             st,
-            command_interfaces_[3 * i].get_value());
+            command_interfaces_[3 * i].get_optional().value());
 
         }
       }
@@ -264,20 +266,20 @@ controller_interface::return_type CiA402Controller::update(
           control_words_[i] = calc_controlword(
             actual_state,
             st,
-            command_interfaces_[3 * i].get_value());
+            command_interfaces_[3 * i].get_optional().value());
 
         }
       }
     }
-    command_interfaces_[3 * i].set_value(control_words_[i]);  // control_word
-    command_interfaces_[3 * i + 1].set_value(mode_ops_[i]);  // mode_of_operation
-    command_interfaces_[3 * i + 2].set_value(reset_faults_[i]);  // reset_fault
+    ok &= command_interfaces_[3 * i].set_value(control_words_[i]);  // control_word
+    ok &= command_interfaces_[3 * i + 1].set_value(double(mode_ops_[i]));  // mode_of_operation
+    ok &= command_interfaces_[3 * i + 2].set_value(bool(reset_faults_[i]));  // reset_fault
     reset_faults_[i] = false;
   }
   rt_sds_srv_ptr_.reset();
 
 
-  return controller_interface::return_type::OK;
+  return ok ? controller_interface::return_type::OK : controller_interface::return_type::ERROR;
 }
 
 
@@ -285,8 +287,7 @@ controller_interface::return_type CiA402Controller::update(
 
 uint16_t CiA402Controller::calc_controlword(uint8_t act_state, uint8_t next_state, uint16_t control_word)
 {
-    uint16_t new_controlword;
-    new_controlword = control_word;
+
     if ( act_state==next_state )
         return control_word;
     
@@ -325,14 +326,17 @@ uint16_t CiA402Controller::calc_controlword(uint8_t act_state, uint8_t next_stat
     } 
     else if(possible_transitions.size() == 1 )
     {
+        uint16_t new_controlword;
+        new_controlword = control_word;
     //     new_controlword = ( *controlword_addr );
         new_controlword &= ( ~COMMAND_MASK.at( to_commandid(possible_transitions[0] ) ).at("MASK") );
         new_controlword |= COMMAND_MASK.at( to_commandid( possible_transitions[0] ) ).at("VAL");
     
     //     std::memcpy ( controlword_addr, &new_controlword, sizeof ( uint16_t ) );
     //     ret = 0;
+        ret = new_controlword;
     }
-    return new_controlword;
+    return ret;
 }
 
 std::string CiA402Controller::state_int_to_str(const uint16_t& state)
@@ -451,7 +455,7 @@ void CiA402Controller::switch_moo_callback(
 //   std::shared_ptr<ResetFaultSrv::Response> response
 // )
 void CiA402Controller::reset_fault_callback(
-  const std::shared_ptr<std_srvs::srv::Trigger::Request> request,
+  const std::shared_ptr<std_srvs::srv::Trigger::Request> /*request*/,
   std::shared_ptr<std_srvs::srv::Trigger::Response> response
 )
 {
@@ -642,7 +646,7 @@ bool CiA402Controller::try_turn_on()
         all_states_reached = false;
       }
     }
-    bool res = false;
+
     std::string message;
     if (!all_states_reached) {
       auto res = forward_state(message);
@@ -662,7 +666,7 @@ bool CiA402Controller::try_turn_on()
 }
 
 void CiA402Controller::try_turn_on_callback(
-  const std::shared_ptr<std_srvs::srv::Trigger::Request> request,
+  const std::shared_ptr<std_srvs::srv::Trigger::Request> /*request*/,
   std::shared_ptr<std_srvs::srv::Trigger::Response> response
 )
 {
@@ -716,7 +720,7 @@ void CiA402Controller::try_turn_on_callback(
   // response->message = "All drives are in operation enabled state";
 }
 
-void CiA402Controller::try_turn_off_callback(const std::shared_ptr<std_srvs::srv::Trigger::Request> request,
+void CiA402Controller::try_turn_off_callback(const std::shared_ptr<std_srvs::srv::Trigger::Request> /*request*/,
   std::shared_ptr<std_srvs::srv::Trigger::Response> response
 )
 {
@@ -732,7 +736,7 @@ void CiA402Controller::try_turn_off_callback(const std::shared_ptr<std_srvs::srv
         all_states_reached = false;
       }
     }
-    bool res = false;
+
     std::string message;
     if (!all_states_reached) {
       auto res = backward_state(message);
