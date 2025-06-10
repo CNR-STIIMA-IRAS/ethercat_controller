@@ -41,6 +41,7 @@ CiA402Controller::CiA402Controller()
 
 CallbackReturn CiA402Controller::on_init()
 {
+
   try {
     // definition of the parameters that need to be queried from the
     // controller configuration file with default values
@@ -56,6 +57,7 @@ CallbackReturn CiA402Controller::on_init()
 CallbackReturn CiA402Controller::on_configure(
   const rclcpp_lifecycle::State & /*previous_state*/)
 {
+
   // getting the names of the dofs to be controlled
   dof_names_ = get_node()->get_parameter("dofs").as_string_array();
 
@@ -110,6 +112,7 @@ CallbackReturn CiA402Controller::on_configure(
 controller_interface::InterfaceConfiguration
 CiA402Controller::command_interface_configuration() const
 {
+
   controller_interface::InterfaceConfiguration conf;
   conf.type = controller_interface::interface_configuration_type::INDIVIDUAL;
   conf.names.reserve(dof_names_.size() * 3);
@@ -124,6 +127,7 @@ CiA402Controller::command_interface_configuration() const
 controller_interface::InterfaceConfiguration
 CiA402Controller::state_interface_configuration() const
 {
+
   controller_interface::InterfaceConfiguration conf;
   conf.type = controller_interface::interface_configuration_type::INDIVIDUAL;
   conf.names.reserve(dof_names_.size() * 2);
@@ -273,7 +277,7 @@ controller_interface::return_type CiA402Controller::update(
     }
     ok &= command_interfaces_[3 * i].set_value(control_words_[i]);  // control_word
     ok &= command_interfaces_[3 * i + 1].set_value(double(mode_ops_[i]));  // mode_of_operation
-    ok &= command_interfaces_[3 * i + 2].set_value(bool(reset_faults_[i]));  // reset_fault
+    ok &= command_interfaces_[3 * i + 2].set_value(double(reset_faults_[i]));  // reset_fault
     reset_faults_[i] = false;
   }
   rt_sds_srv_ptr_.reset();
