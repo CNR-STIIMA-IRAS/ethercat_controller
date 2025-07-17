@@ -1,0 +1,7 @@
+# Request
+string[] dof_names
+
+---
+# Response
+string[] dof_names
+uint8[] values

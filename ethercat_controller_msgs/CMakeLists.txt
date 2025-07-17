@@ -14,6 +14,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "srv/SwitchDriveModeOfOperation.srv"
   "srv/ResetDriveFault.srv"
   "srv/SetDriveStates.srv"
+  "srv/GetModesOfOperation.srv"
   DEPENDENCIES
   std_msgs
 )
