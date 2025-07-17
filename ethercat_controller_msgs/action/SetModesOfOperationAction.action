@@ -1,0 +1,11 @@
+# Goal
+string dof_name
+string mode_of_operation
+
+---
+# Result
+bool success
+
+---
+# Feedback
+# (no feedback needed)

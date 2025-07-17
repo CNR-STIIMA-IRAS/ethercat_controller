@@ -12,7 +12,9 @@
 // limitations under the License.
 
 #include <algorithm>
+#include <controller_interface/controller_interface.hpp>
 #include <cstdint>
+#include <iterator>
 #include <string>
 #include <utility>
 #include <vector>
@@ -39,24 +41,24 @@ CiA402Controller::CiA402Controller()
         item.store(ethercat_controller_msgs::msg::Cia402DriveStates::STATE_UNDEFINED);
     }
 }
-CiA402Controller::~CiA402Controller()
-{
-  rt_drive_state_publisher_->stop();
-  if (rt_drive_state_publisher_->get_thread().joinable()) 
-  {
-    rt_drive_state_publisher_->get_thread().join();
-  }
-  std::this_thread::sleep_for(std::chrono::milliseconds(500));
-  moo_srv_ptr_->clear_on_new_request_callback();
+// CiA402Controller::~CiA402Controller()
+// {
+//   rt_drive_state_publisher_->stop();
+//   if (rt_drive_state_publisher_->get_thread().joinable()) 
+//   {
+//     rt_drive_state_publisher_->get_thread().join();
+//   }
+//   std::this_thread::sleep_for(std::chrono::milliseconds(500));
+//   moo_srv_ptr_->clear_on_new_request_callback();
   
-  reset_fault_srv_ptr_->clear_on_new_request_callback();
-  sds_srv_ptr_->clear_on_new_request_callback();
-  turn_on_ptr_->clear_on_new_request_callback();
-  turn_off_ptr_->clear_on_new_request_callback();
-  homing_srv_ptr_->clear_on_new_request_callback();
+//   reset_fault_srv_ptr_->clear_on_new_request_callback();
+//   sds_srv_ptr_->clear_on_new_request_callback();
+//   turn_on_ptr_->clear_on_new_request_callback();
+//   turn_off_ptr_->clear_on_new_request_callback();
+//   homing_srv_ptr_->clear_on_new_request_callback();
 
-  controller_interface::ControllerInterface::~ControllerInterface();
-}
+//   controller_interface::ControllerInterface::~ControllerInterface();
+// }
 
 
 CallbackReturn CiA402Controller::on_init()
@@ -84,6 +86,11 @@ CallbackReturn CiA402Controller::on_configure(
   if (dof_names_.empty()) {
     RCLCPP_ERROR(get_node()->get_logger(), "'dofs' parameter was empty");
     return CallbackReturn::FAILURE;
+  }
+  
+  for (std::size_t i = 0; i < dof_names_.size(); ++i) 
+  {
+    current_mode_ops_.push_back(std::make_unique<std::atomic<int8_t>>(0));
   }
 
   mode_ops_.resize(dof_names_.size(), std::numeric_limits<int>::quiet_NaN());
@@ -123,6 +130,14 @@ CallbackReturn CiA402Controller::on_configure(
 
   homing_srv_ptr_ = get_node()->create_service<std_srvs::srv::Trigger>(
     "~/perform_homing", std::bind(&CiA402Controller::perform_homing_callback, this, _1, _2));
+
+
+  set_moo_action_server_ = rclcpp_action::create_server<SetModesOfOperationAction>(
+      get_node(),
+      "~/async_set_modes_of_operation",
+      std::bind(&CiA402Controller::set_moo_action_handle_goal, this, _1, _2),
+      std::bind(&CiA402Controller::set_moo_action_handle_cancel, this, _1),
+      std::bind(&CiA402Controller::set_moo_action_handle_accepted, this, _1));
 
 
   RCLCPP_INFO(get_node()->get_logger(), "configure successful");
@@ -165,15 +180,26 @@ CallbackReturn CiA402Controller::on_activate(
 }
 
 CallbackReturn CiA402Controller::on_deactivate(
-  const rclcpp_lifecycle::State & /*previous_state*/)
+  const rclcpp_lifecycle::State & previous_state)
 {
-  return CallbackReturn::SUCCESS;
+  // bool ret = true;
+  // for(std::size_t i=0; i<dof_names_.size();i++)
+  // {
+  //   ret &= command_interfaces_[3 * i].set_value(0);  // control_word
+  // }
+  return controller_interface::ControllerInterface::on_deactivate(previous_state); // : CallbackReturn::FAILURE;
 }
 
 controller_interface::return_type CiA402Controller::update(
   const rclcpp::Time & /*time*/,
   const rclcpp::Duration & /*period*/)
 {
+
+  for (std::size_t i = 0; i < dof_names_.size(); ++i) 
+  {
+    auto _v = state_interfaces_[2 * i].get_optional();
+    *current_mode_ops_.at(i) = int8_t(_v.value_or(0));
+  }
 
   std::shared_ptr<SetDriveStatesSrv::Request> rt_state_req;
   if (rt_drive_state_publisher_ && rt_drive_state_publisher_->trylock()) {
@@ -461,6 +487,33 @@ std::string CiA402Controller::mode_of_operation_str(double mode_of_operation)
   return "MODE_UNDEFINED";
 }
 
+/** returns mode str based upon the mode_of_operation value */
+int8_t CiA402Controller::mode_of_operation_int(const std::string& mode_of_operation)
+{
+  int8_t ret = -1; 
+
+  if (mode_of_operation == "MODE_NO_MODE") {
+    ret = 0;
+  } else if (mode_of_operation == "MODE_PROFILED_POSITION") {
+    ret = 1;
+  } else if (mode_of_operation == "MODE_PROFILED_VELOCITY") {
+    ret = 3;
+  } else if (mode_of_operation == "MODE_PROFILED_TORQUE") {
+    ret = 4;
+  } else if (mode_of_operation == "MODE_HOMING") {
+    ret = 6;
+  } else if (mode_of_operation == "MODE_INTERPOLATED_POSITION") {
+    ret = 7;
+  } else if (mode_of_operation == "MODE_CYCLIC_SYNC_POSITION") {
+    ret = 8;
+  } else if (mode_of_operation == "MODE_CYCLIC_SYNC_VELOCITY") {
+    ret = 9;
+  } else if (mode_of_operation == "MODE_CYCLIC_SYNC_TORQUE") {
+    ret = 10;
+  }
+  return ret;
+}
+
 void CiA402Controller::switch_moo_callback(
   const std::shared_ptr<SwitchMOOSrv::Request> request,
   std::shared_ptr<SwitchMOOSrv::Response> response
@@ -471,8 +524,83 @@ void CiA402Controller::switch_moo_callback(
     response->return_message = "Request transmitted to drive at dof:" + request->dof_name;
   } else {
     response->return_message = "Abort. DoF " + request->dof_name + " not configured.";
+    return;
   }
 }
+
+rclcpp_action::GoalResponse CiA402Controller::set_moo_action_handle_goal(
+    const rclcpp_action::GoalUUID & uuid,
+    std::shared_ptr<const SetModesOfOperationAction::Goal> goal)
+  {
+    RCLCPP_INFO(get_node()->get_logger(), "Received goal request: dof %s, moo: %s", 
+      goal->dof_name.c_str(), goal->mode_of_operation.c_str());
+    (void)uuid;
+    return rclcpp_action::GoalResponse::ACCEPT_AND_EXECUTE;
+  }
+
+rclcpp_action::CancelResponse CiA402Controller::set_moo_action_handle_cancel(
+  const std::shared_ptr<GoalHandleSetModesOfOperationAction>& goal_handle)
+{
+  RCLCPP_INFO(get_node()->get_logger(), "Received request to cancel goal");
+  (void)goal_handle;
+  return rclcpp_action::CancelResponse::ACCEPT;
+}
+
+
+void CiA402Controller::set_moo_action_execute(const std::shared_ptr<GoalHandleSetModesOfOperationAction>& goal_handle)
+{
+  RCLCPP_INFO(get_node()->get_logger(), "Executing goal");
+  rclcpp::Rate loop_rate(50);
+  const auto goal = goal_handle->get_goal();
+  auto result = std::make_shared<SetModesOfOperationAction::Result>();
+
+  const auto & dof_name = goal_handle->get_goal()->dof_name;
+  const auto & mode_of_opertation = goal_handle->get_goal()->mode_of_operation;
+  auto _it = find(dof_names_.begin(), dof_names_.end(), dof_name);
+  if ( _it == dof_names_.end()) 
+  {
+    RCLCPP_INFO(get_node()->get_logger(), "Set Modes of Operation Goal Aborted since the dof '%s' is not in the list of the managed resources", dof_name.c_str());
+    result->success = false;
+    goal_handle->succeed(result);
+    return;
+  }
+  auto _idx = std::distance(dof_names_.begin(), _it);
+  auto _moo = mode_of_operation_int(mode_of_opertation);
+  
+  while(rclcpp::ok()){
+    // Check if there is a cancel request
+    if (goal_handle->is_canceling()) {
+      result->success = false;
+      goal_handle->canceled(result);
+      RCLCPP_INFO(get_node()->get_logger(), "Set Modes of Operation Goal canceled");
+      return;
+    }
+    // Update sequence
+    if( _moo == *current_mode_ops_.at(_idx))
+    {
+      result->success = true;
+      goal_handle->succeed(result);
+      RCLCPP_INFO(get_node()->get_logger(), "Set Mdoes of Operation Goal succeeded");
+      break;
+    }
+    RCLCPP_INFO(get_node()->get_logger(), "Set Mdoes of Operation Action is in execution");   
+    loop_rate.sleep();
+  }
+
+  // Check if goal is done
+  
+}
+
+
+
+void CiA402Controller::set_moo_action_handle_accepted(const std::shared_ptr<GoalHandleSetModesOfOperationAction>& goal_handle)
+{
+  using namespace std::placeholders;
+  // this needs to return quickly to avoid blocking the executor, so spin up a new thread
+  std::thread{std::bind(&CiA402Controller::set_moo_action_execute, this, _1), goal_handle}.detach();
+}
+
+
 
 // void CiA402Controller::reset_fault_callback(
 //   const std::shared_ptr<ResetFaultSrv::Request> request,
