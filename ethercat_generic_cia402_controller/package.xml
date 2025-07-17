@@ -17,6 +17,7 @@
   <depend>ethercat_msgs</depend>
   <depend>ethercat_controller_msgs</depend>
   <depend>std_srvs</depend>
+  <depend>backward_ros</depend>
 
   <build_depend>pluginlib</build_depend>
 
