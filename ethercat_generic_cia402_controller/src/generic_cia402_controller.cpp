@@ -16,6 +16,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include <chrono>
 
 #include "rclcpp/logging.hpp"
 #include "rclcpp/qos.hpp"
@@ -38,6 +39,25 @@ CiA402Controller::CiA402Controller()
         item.store(ethercat_controller_msgs::msg::Cia402DriveStates::STATE_UNDEFINED);
     }
 }
+CiA402Controller::~CiA402Controller()
+{
+  rt_drive_state_publisher_->stop();
+  if (rt_drive_state_publisher_->get_thread().joinable()) 
+  {
+    rt_drive_state_publisher_->get_thread().join();
+  }
+  std::this_thread::sleep_for(std::chrono::milliseconds(500));
+  moo_srv_ptr_->clear_on_new_request_callback();
+  
+  reset_fault_srv_ptr_->clear_on_new_request_callback();
+  sds_srv_ptr_->clear_on_new_request_callback();
+  turn_on_ptr_->clear_on_new_request_callback();
+  turn_off_ptr_->clear_on_new_request_callback();
+  homing_srv_ptr_->clear_on_new_request_callback();
+
+  controller_interface::ControllerInterface::~ControllerInterface();
+}
+
 
 CallbackReturn CiA402Controller::on_init()
 {

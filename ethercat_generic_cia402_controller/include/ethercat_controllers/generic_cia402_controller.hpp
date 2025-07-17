@@ -36,6 +36,9 @@ public:
   CiA402Controller();
 
   CIA402_CONTROLLER_PUBLIC
+  ~CiA402Controller();
+
+  CIA402_CONTROLLER_PUBLIC
   CallbackReturn on_init() override;
 
   CIA402_CONTROLLER_PUBLIC
