@@ -19,6 +19,7 @@
 #include <utility>
 #include <vector>
 #include <chrono>
+#include <bitset>
 
 #include "rclcpp/logging.hpp"
 #include "rclcpp/qos.hpp"
@@ -272,17 +273,13 @@ controller_interface::return_type CiA402Controller::update(
     // }
 
     if (homing_request && (*homing_request)) {
-      int dof_idx = 0;
       for (auto i = 0ul; i < dof_names_.size(); i++) {
-        dof_idx ++;
-        RCLCPP_INFO(get_node()->get_logger(),"Inside homing for loop, setting control world for dof number %d", dof_idx);
         uint16_t cw = static_cast<uint16_t>(control_words_[i]);
         cw |= (1 << 4);
-        std::cout << cw << " " << control_words_[i] << std::endl;
+        std::cout << "Perfom homing Control Word:  " << cw << "(0x" << std::hex << cw << "  - 0b" << std::bitset<16>{cw} << ")" << std::endl;
         control_words_[i] = static_cast<double>(cw);
         RCLCPP_INFO(get_node()->get_logger(),"Set control world: %f", control_words_[i]);
       }
-      dof_idx = 0;
       rt_homing_srv_ptr_.reset();
     }
     else
