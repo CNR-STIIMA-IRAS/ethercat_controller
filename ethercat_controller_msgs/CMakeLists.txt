@@ -11,6 +11,7 @@ find_package(std_msgs REQUIRED)
 
 rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/Cia402DriveStates.msg"
+  "msg/DriveStateFlags.msg"
   "srv/SwitchDriveModeOfOperation.srv"
   "srv/ResetDriveFault.srv"
   "srv/SetDriveStates.srv"

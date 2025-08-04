@@ -1,0 +1,2 @@
+bool motors_on
+bool fault_present
