@@ -4,5 +4,5 @@ string[] dof_names
 ---
 # Response
 string[] dof_names
-uint8[] values
+string[] values
 int16[] status_words
