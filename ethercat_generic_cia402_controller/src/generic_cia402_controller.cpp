@@ -28,6 +28,16 @@
 #include "hardware_interface/types/hardware_interface_type_values.hpp"
 #include "ethercat_controllers/generic_cia402_controller.hpp"
 
+#include "rclcpp/version.h"
+#if RCLCPP_VERSION_GTE(29, 0, 0)
+#define JAZZY_COMPATIBILITY 1
+#undef HUMLBE_COMPATIBILITY
+#else
+#define HUMBLE_COMPATIBILITY 1
+#undef JAZZY_COMPATIBILITY
+#endif
+
+
 namespace ethercat_controllers
 {
 using hardware_interface::LoanedCommandInterface;
@@ -198,8 +208,13 @@ controller_interface::return_type CiA402Controller::update(
 
   for (std::size_t i = 0; i < dof_names_.size(); ++i) 
   {
+#ifdef JAZZY_COMPATIBILITY
     auto _v = state_interfaces_[2 * i].get_optional();
     *current_mode_ops_.at(i) = int8_t(_v.value_or(0));
+#else
+    *current_mode_ops_.at(i) = int8_t(state_interfaces_[2 * i].get_value());
+#endif
+
   }
 
   std::shared_ptr<SetDriveStatesSrv::Request> rt_state_req;
@@ -215,12 +230,21 @@ controller_interface::return_type CiA402Controller::update(
     bool fault_present = false;
     for (auto i = 0ul; i < dof_names_.size(); i++) {
       msg.dof_names[i] = dof_names_[i];
+#ifdef JAZZY_COMPATIBILITY
       msg.modes_of_operation[i] = mode_of_operation_str(state_interfaces_[2 * i].get_optional().value());
       msg.status_words[i] = state_interfaces_[2 * i + 1].get_optional().value();
       status_words_[i] = state_interfaces_[2 * i + 1].get_optional().value();
       msg.drive_states[i] = device_state_str(state_interfaces_[2 * i + 1].get_optional().value());
       actual_state_[i].store(state_str_to_int(device_state_str(state_interfaces_[2 * i + 1].get_optional().value())));
       if (state_str_to_int(device_state_str(state_interfaces_[2 * i + 1].get_optional().value())) == ethercat_controller_msgs::msg::Cia402DriveStates::STATE_FAULT)
+#else
+      msg.modes_of_operation[i] = mode_of_operation_str(state_interfaces_[2 * i].get_value());
+      msg.status_words[i] = state_interfaces_[2 * i + 1].get_value();
+      status_words_[i] = state_interfaces_[2 * i + 1].get_value();
+      msg.drive_states[i] = device_state_str(state_interfaces_[2 * i + 1].get_value());
+      actual_state_[i].store(state_str_to_int(device_state_str(state_interfaces_[2 * i + 1].get_value())));
+      if (state_str_to_int(device_state_str(state_interfaces_[2 * i + 1].get_value())) == ethercat_controller_msgs::msg::Cia402DriveStates::STATE_FAULT)
+#endif
       {
         fault_present = true;
       }
@@ -258,7 +282,11 @@ controller_interface::return_type CiA402Controller::update(
 
   for (auto i = 0ul; i < dof_names_.size(); i++) {
     if (!moo_request || !(*moo_request)) {
+#ifdef JAZZY_COMPATIBILITY
       mode_ops_[i] = state_interfaces_[2 * i].get_optional().value();
+#else
+      mode_ops_[i] = state_interfaces_[2 * i].get_value();
+#endif
     } else {
       if (dof_names_[i] == (*moo_request)->dof_name) {
         mode_ops_[i] = (*moo_request)->mode_of_operation;
@@ -299,7 +327,12 @@ controller_interface::return_type CiA402Controller::update(
           control_words_[i] = calc_controlword(
             actual_state,
             st,
-            command_interfaces_[3 * i].get_optional().value());
+#ifdef JAZZY_COMPATIBILITY
+            command_interfaces_[3 * i].get_optional().value()
+#else
+            command_interfaces_[3 * i].get_value()
+#endif
+              );
 
         }
       }
@@ -313,14 +346,25 @@ controller_interface::return_type CiA402Controller::update(
           control_words_[i] = calc_controlword(
             actual_state,
             st,
-            command_interfaces_[3 * i].get_optional().value());
+  #ifdef JAZZY_COMPATIBILITY
+              command_interfaces_[3 * i].get_optional().value()
+  #else
+              command_interfaces_[3 * i].get_value()
+  #endif
+              );
 
         }
       }
     }
+#ifdef JAZZY_COMPATIBILITY
     ok &= command_interfaces_[3 * i].set_value(control_words_[i]);  // control_word
     ok &= command_interfaces_[3 * i + 1].set_value(double(mode_ops_[i]));  // mode_of_operation
     ok &= command_interfaces_[3 * i + 2].set_value(double(reset_faults_[i]));  // reset_fault
+#else
+    command_interfaces_[3 * i].set_value(control_words_[i]);  // control_word
+    command_interfaces_[3 * i + 1].set_value(double(mode_ops_[i]));  // mode_of_operation
+    command_interfaces_[3 * i + 2].set_value(double(reset_faults_[i]));  // reset_fault
+#endif
     reset_faults_[i] = false;
   }
   rt_sds_srv_ptr_.reset();
