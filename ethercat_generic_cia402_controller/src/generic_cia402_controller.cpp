@@ -696,6 +696,7 @@ void CiA402Controller::reset_fault_callback(
       }
     }
     if (all_states_reached) {
+      message = "Fault reset successful";
       break;
     }
     // sleep a millesecond
