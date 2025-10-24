@@ -495,9 +495,9 @@ std::string CiA402Controller::device_state_str(uint16_t status_word)
     return "STATE_OPERATION_ENABLED";
   } else if ((status_word & 0b01101111) == 0b00000111) {
     return "STATE_QUICK_STOP_ACTIVE";
-  } else if ((status_word & 0b01001111) == 0b00001111) {
+  } else if ((status_word & 0b00001111) == 0b00001111) {
     return "STATE_FAULT_REACTION_ACTIVE";
-  } else if ((status_word & 0b01001111) == 0b00001000) {
+  } else if ((status_word & 0b00001111) == 0b00001000) {
     return "STATE_FAULT";
   }
   return "STATE_UNDEFINED";
@@ -617,14 +617,15 @@ void CiA402Controller::set_moo_action_execute(const std::shared_ptr<GoalHandleSe
       return;
     }
     // Update sequence
+
     if( _moo == *current_mode_ops_.at(_idx))
     {
       result->success = true;
       goal_handle->succeed(result);
-      RCLCPP_INFO(get_node()->get_logger(), "Set Mdoes of Operation Goal succeeded");
+      RCLCPP_INFO(get_node()->get_logger(), "Set Modes of Operation Goal succeeded");
       break;
     }
-    RCLCPP_INFO(get_node()->get_logger(), "Set Mdoes of Operation Action is in execution");   
+    RCLCPP_INFO(get_node()->get_logger(), "Set Modes of Operation Action is in execution");
     loop_rate.sleep();
   }
 
@@ -1004,6 +1005,7 @@ void CiA402Controller::set_drive_states_callback(
     std::this_thread::sleep_for(std::chrono::milliseconds(1));
     current_time = get_node()->now();
   }
+
   response->success = all_states_reached;
 }
 
