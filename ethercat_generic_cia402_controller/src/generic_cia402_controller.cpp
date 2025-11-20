@@ -212,7 +212,8 @@ controller_interface::return_type CiA402Controller::update(
     msg.drive_states.resize(dof_names_.size());
     status_words_.resize(dof_names_.size());
 
-    bool fault_present = false;
+    msg.fault_present = false;
+    msg.drives_on = true;
     for (auto i = 0ul; i < dof_names_.size(); i++) {
       msg.dof_names[i] = dof_names_[i];
       msg.modes_of_operation[i] = mode_of_operation_str(state_interfaces_[2 * i].get_optional().value());
@@ -222,10 +223,11 @@ controller_interface::return_type CiA402Controller::update(
       actual_state_[i].store(state_str_to_int(device_state_str(state_interfaces_[2 * i + 1].get_optional().value())));
       if (state_str_to_int(device_state_str(state_interfaces_[2 * i + 1].get_optional().value())) == ethercat_controller_msgs::msg::Cia402DriveStates::STATE_FAULT)
       {
-        fault_present = true;
+        msg.fault_present = true;
       }
+      msg.drives_on &= msg.drive_states[i] == "STATE_OPERATION_ENABLED";
     }
-    if (fault_present)
+    if (msg.fault_present)
     {
       std::vector<std::string> req_names;
       for (auto i = 0ul; i < dof_names_.size(); i++) {
@@ -240,10 +242,7 @@ controller_interface::return_type CiA402Controller::update(
         rt_state_req->dof_names = req_names;
         rt_state_req->drive_states.resize(req_names.size(), state_int_to_str(ethercat_controller_msgs::msg::Cia402DriveStates::STATE_SWITCH_ON_DISABLED));
       }
-
-
     }
-
     rt_drive_state_publisher_->unlockAndPublish();
   }
   

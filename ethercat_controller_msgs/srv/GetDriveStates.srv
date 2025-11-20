@@ -1,5 +1,4 @@
 #request
 ---
 #response
-bool fault_present
-bool drives_on
+Cia402DriveStates states

@@ -36,3 +36,6 @@ string[] modes_of_operation
 
 # Current Status Word
 int16[] status_words
+
+bool fault_present
+bool drives_on
