@@ -1,8 +1,0 @@
-# Request
-string[] dof_names
-
----
-# Response
-string[] dof_names
-string[] values
-int16[] status_words
