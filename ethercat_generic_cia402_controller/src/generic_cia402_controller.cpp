@@ -227,7 +227,8 @@ controller_interface::return_type CiA402Controller::update(
     msg.drive_states.resize(dof_names_.size());
     status_words_.resize(dof_names_.size());
 
-    bool fault_present = false;
+    msg.fault_present = false;
+    msg.drives_on = true;
     for (auto i = 0ul; i < dof_names_.size(); i++) {
       msg.dof_names[i] = dof_names_[i];
 #ifdef JAZZY_COMPATIBILITY
@@ -246,10 +247,11 @@ controller_interface::return_type CiA402Controller::update(
       if (state_str_to_int(device_state_str(state_interfaces_[2 * i + 1].get_value())) == ethercat_controller_msgs::msg::Cia402DriveStates::STATE_FAULT)
 #endif
       {
-        fault_present = true;
+        msg.fault_present = true;
       }
+      msg.drives_on &= msg.drive_states[i] == "STATE_OPERATION_ENABLED";
     }
-    if (fault_present)
+    if (msg.fault_present)
     {
       std::vector<std::string> req_names;
       for (auto i = 0ul; i < dof_names_.size(); i++) {
@@ -662,9 +664,11 @@ void CiA402Controller::reset_fault_callback(
   
   //guarda quale dof ha bisogno di reset
   std::vector<std::string> req_names;
+  std::vector<size_t> req_idx;
   for (auto i = 0ul; i < dof_names_.size(); i++) {
     if (actual_state_[i] == ethercat_controller_msgs::msg::Cia402DriveStates::STATE_FAULT) {
       req_names.push_back(dof_names_[i]);
+      req_idx.push_back(i);
     }
   }
   
@@ -688,8 +692,9 @@ void CiA402Controller::reset_fault_callback(
 
   while (current_time - start_time < timeout) {
     all_states_reached = true;
-    for (auto i = 0ul; i < req_names.size(); i++) {
-      if (actual_state_[i] != state_str_to_int(state_req->drive_states[i])) {
+    for (auto i = 0ul; i < req_idx.size(); i++) {
+      auto j = req_idx[i];
+      if (actual_state_[j] != ethercat_controller_msgs::msg::Cia402DriveStates::STATE_SWITCH_ON_DISABLED) {
         all_states_reached = false;
         message = "Fault reset failed";
         break;
@@ -994,7 +999,12 @@ void CiA402Controller::set_drive_states_callback(
     all_states_reached = true;
 
     for (auto i = 0ul; i < dof_names_.size(); i++) {
-      if (actual_state_[i] != state_str_to_int(request->drive_states[i])) {
+      auto it = std::find(request->dof_names.begin(), request->dof_names.end(), dof_names_[i]);
+      if (it == request->dof_names.end()) {
+        continue;
+      }
+      auto j = std::distance(request->dof_names.begin(), it);
+      if (actual_state_[i] != state_str_to_int(request->drive_states[j])) {
         all_states_reached = false;
         break;
       }

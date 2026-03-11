@@ -26,21 +26,21 @@
 
 TEST(TestLoadCiA402Controller, load_controller)
 {
-//  rclcpp::init(0, nullptr);
+  rclcpp::init(0, nullptr);
 
-//  auto node = std::make_shared<rclcpp::Node>("test_load_controller_node");
+  auto node = std::make_shared<rclcpp::Node>("test_load_controller_node");
 
-//  std::shared_ptr<rclcpp::Executor> executor =
-//    std::make_shared<rclcpp::executors::SingleThreadedExecutor>();
+  std::shared_ptr<rclcpp::Executor> executor = 
+    std::make_shared<rclcpp::executors::SingleThreadedExecutor>();
   
-//  controller_manager::ControllerManager cm(
-//    std::make_unique<hardware_interface::ResourceManager>(ros2_control_test_assets::minimal_robot_urdf, node->get_node_clock_interface(), node->get_node_logging_interface()),
-//    executor, "test_controller_manager");
+  controller_manager::ControllerManager cm(
+    std::make_unique<hardware_interface::ResourceManager>(ros2_control_test_assets::minimal_robot_urdf, node->get_node_clock_interface(), node->get_node_logging_interface()),
+    executor, "test_controller_manager");
 
-//  ASSERT_NO_THROW(
-//    cm.load_controller(
-//      "test_cia402_controller",
-//      "ethercat_controllers/CiA402Controller"));
+  ASSERT_NO_THROW(
+    cm.load_controller(
+      "test_cia402_controller",
+      "ethercat_controllers/CiA402Controller"));
 
   rclcpp::shutdown();
 }
