@@ -29,7 +29,7 @@
 #include "ethercat_controllers/generic_cia402_controller.hpp"
 
 #include "rclcpp/version.h"
-#if RCLCPP_VERSION_GTE(29, 0, 0)
+#if RCLCPP_VERSION_GTE(23, 0, 0)
 #define JAZZY_COMPATIBILITY 1
 #undef HUMLBE_COMPATIBILITY
 #else
