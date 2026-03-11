@@ -1,4 +1,6 @@
-
+// Copyright 2026, CNR-STIIMA
+// Copyright 2023, ICube Laboratory, University of Strasbourg
+//
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -52,25 +54,6 @@ CiA402Controller::CiA402Controller()
         item.store(ethercat_controller_msgs::msg::Cia402DriveStates::STATE_UNDEFINED);
     }
 }
-// CiA402Controller::~CiA402Controller()
-// {
-//   rt_drive_state_publisher_->stop();
-//   if (rt_drive_state_publisher_->get_thread().joinable()) 
-//   {
-//     rt_drive_state_publisher_->get_thread().join();
-//   }
-//   std::this_thread::sleep_for(std::chrono::milliseconds(500));
-//   moo_srv_ptr_->clear_on_new_request_callback();
-  
-//   reset_fault_srv_ptr_->clear_on_new_request_callback();
-//   sds_srv_ptr_->clear_on_new_request_callback();
-//   turn_on_ptr_->clear_on_new_request_callback();
-//   turn_off_ptr_->clear_on_new_request_callback();
-//   homing_srv_ptr_->clear_on_new_request_callback();
-
-//   controller_interface::ControllerInterface::~ControllerInterface();
-// }
-
 
 CallbackReturn CiA402Controller::on_init()
 {
@@ -126,7 +109,7 @@ CallbackReturn CiA402Controller::on_configure(
   using namespace std::placeholders;
   moo_srv_ptr_ = get_node()->create_service<SwitchMOOSrv>(
     "~/switch_mode_of_operation", std::bind(&CiA402Controller::switch_moo_callback, this, _1, _2));
-  // reset_fault_srv_ptr_ = get_node()->create_service<ResetFaultSrv>(
+  
   reset_fault_srv_ptr_ = get_node()->create_service<std_srvs::srv::Trigger>(
     "~/reset_fault", std::bind(&CiA402Controller::reset_fault_callback, this, _1, _2));
 
@@ -193,11 +176,6 @@ CallbackReturn CiA402Controller::on_activate(
 CallbackReturn CiA402Controller::on_deactivate(
   const rclcpp_lifecycle::State & previous_state)
 {
-  // bool ret = true;
-  // for(std::size_t i=0; i<dof_names_.size();i++)
-  // {
-  //   ret &= command_interfaces_[3 * i].set_value(0);  // control_word
-  // }
   return controller_interface::ControllerInterface::on_deactivate(previous_state); // : CallbackReturn::FAILURE;
 }
 
@@ -295,13 +273,6 @@ controller_interface::return_type CiA402Controller::update(
       }
     }
 
-    // if (reset_fault_request && (*reset_fault_request)) {
-    //   if (dof_names_[i] == (*reset_fault_request)->dof_name) {
-    //     reset_faults_[i] = true;
-    //     rt_reset_fault_srv_ptr_.reset();
-    //   }
-    // }
-
     if (homing_request && (*homing_request)) {
       for (auto i = 0ul; i < dof_names_.size(); i++) {
         uint16_t cw = static_cast<uint16_t>(control_words_[i]);
@@ -392,24 +363,17 @@ uint16_t CiA402Controller::calc_controlword(uint8_t act_state, uint8_t next_stat
 
     for ( std::vector<std::pair<TransitionID,uint8_t> >::const_iterator ita = possible_states_from_act.begin(); ita != possible_states_from_act.end(); ita++)
     {
-        // for ( std::vector<std::pair<TransitionID,uint8_t> >::const_iterator itn = possible_states_from_next.begin(); itn != possible_states_from_next.end(); itn++)
-        // {
-          if( ita->second == next_state )
-          {
-            if(TRANSITION_TYPE_MAP.at( ita->first ) != TRANSITION_FOO)
-            {
-              possible_transitions.push_back( ita->first );
-            }
-          }
-        // }
+      if( ita->second == next_state )
+      {
+        if(TRANSITION_TYPE_MAP.at( ita->first ) != TRANSITION_FOO)
+        {
+          possible_transitions.push_back( ita->first );
+        }
+      }
     }
 
     if(possible_transitions.size() == 0 || possible_transitions.size() > 1 )
     {
-        // RCLCPP_ERROR(get_node()->get_logger(), "ERROR ******** \n" );
-        // RCLCPP_ERROR(get_node()->get_logger(), "       Act state (IN ): %s \n ", STATEID_STRINGS.at( act_state ).c_str() );
-        // RCLCPP_ERROR(get_node()->get_logger(), "ERROR ******** \n" );
-        // RCLCPP_ERROR(get_node()->get_logger(), "       Nex state (IN ): %s \n ", STATEID_STRINGS.at( next_state ).c_str() );
         RCLCPP_ERROR(get_node()->get_logger(), "TRANSITIONS FOUND %zu: ", possible_transitions.size() );
         for(size_t i=0;i<possible_transitions.size(); i++)
         {
@@ -421,12 +385,9 @@ uint16_t CiA402Controller::calc_controlword(uint8_t act_state, uint8_t next_stat
     {
         uint16_t new_controlword;
         new_controlword = control_word;
-    //     new_controlword = ( *controlword_addr );
         new_controlword &= ( ~COMMAND_MASK.at( to_commandid(possible_transitions[0] ) ).at("MASK") );
         new_controlword |= COMMAND_MASK.at( to_commandid( possible_transitions[0] ) ).at("VAL");
     
-    //     std::memcpy ( controlword_addr, &new_controlword, sizeof ( uint16_t ) );
-    //     ret = 0;
         ret = new_controlword;
     }
     return ret;
@@ -644,24 +605,11 @@ void CiA402Controller::set_moo_action_handle_accepted(const std::shared_ptr<Goal
   std::thread{std::bind(&CiA402Controller::set_moo_action_execute, this, _1), goal_handle}.detach();
 }
 
-
-
-// void CiA402Controller::reset_fault_callback(
-//   const std::shared_ptr<ResetFaultSrv::Request> request,
-//   std::shared_ptr<ResetFaultSrv::Response> response
-// )
 void CiA402Controller::reset_fault_callback(
   const std::shared_ptr<std_srvs::srv::Trigger::Request> /*request*/,
   std::shared_ptr<std_srvs::srv::Trigger::Response> response
 )
-{
-  // if (find(dof_names_.begin(), dof_names_.end(), request->dof_name) != dof_names_.end()) {
-  //   rt_reset_fault_srv_ptr_.writeFromNonRT(request);
-  //   response->return_message = "Request transmitted to drive at dof:" + request->dof_name;
-  // } else {
-  //   response->return_message = "Abort. DoF " + request->dof_name + " not configured.";
-  // }
-  
+{  
   //guarda quale dof ha bisogno di reset
   std::vector<std::string> req_names;
   std::vector<size_t> req_idx;
@@ -852,8 +800,6 @@ bool CiA402Controller::try_turn_on()
       auto res = forward_state(message);
       if(!res)
       {
-        // response->success = false;
-        // response->message = message;
         return res;
       }
     }
@@ -870,7 +816,6 @@ void CiA402Controller::try_turn_on_callback(
   std::shared_ptr<std_srvs::srv::Trigger::Response> response
 )
 {
-
     bool res = false;
     std::string message;
     res = try_turn_on();
@@ -886,38 +831,6 @@ void CiA402Controller::try_turn_on_callback(
 
     }
 
-
-  // rclcpp::Time start_time = get_node()->now();
-  // rclcpp::Duration timeout = rclcpp::Duration::from_seconds(3.0);
-  // rclcpp::Time current_time = get_node()->now();
-  // bool all_states_reached = false;
-
-  // while (current_time - start_time < timeout && !all_states_reached) {
-  //   all_states_reached = true;
-  //   for (auto i = 0ul; i < dof_names_.size(); i++) {
-  //     if (actual_state_[i] != ethercat_controller_msgs::msg::Cia402DriveStates::STATE_OPERATION_ENABLED) {
-  //       all_states_reached = false;
-  //     }
-  //   }
-  //   bool res = false;
-  //   std::string message;
-  //   if (!all_states_reached) {
-  //     auto res = forward_state(message);
-  //     if(!res)
-  //     {
-  //       response->success = false;
-  //       response->message = message;
-  //       return;
-  //     }
-  //   }
-  //   // sleep a millesecond
-  //   std::this_thread::sleep_for(std::chrono::milliseconds(1));
-  //   current_time = get_node()->now();
-  // }
-
-  // std::string message;
-  // response->success = true;
-  // response->message = "All drives are in operation enabled state";
 }
 
 void CiA402Controller::try_turn_off_callback(const std::shared_ptr<std_srvs::srv::Trigger::Request> /*request*/,

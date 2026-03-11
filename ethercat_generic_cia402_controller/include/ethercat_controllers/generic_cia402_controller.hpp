@@ -1,3 +1,19 @@
+// Copyright 2026, CNR-STIIMA
+//
+// Copyright 2023, ICube Laboratory, University of Strasbourg
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #ifndef ETHERCAT_CONTROLLERS__GENERIC_CIA402_CONTROLLER_HPP_
 #define ETHERCAT_CONTROLLERS__GENERIC_CIA402_CONTROLLER_HPP_
 
@@ -37,9 +53,6 @@ class CiA402Controller : public controller_interface::ControllerInterface
 public:
   CIA402_CONTROLLER_PUBLIC
   CiA402Controller();
-
-  // CIA402_CONTROLLER_PUBLIC
-  // ~CiA402Controller();
 
   CIA402_CONTROLLER_PUBLIC
   CallbackReturn on_init() override;
@@ -84,7 +97,6 @@ protected:
   realtime_tools::RealtimeBuffer<std::shared_ptr<SwitchMOOSrv::Request>> rt_moo_srv_ptr_;
   rclcpp::Service<SwitchMOOSrv>::SharedPtr moo_srv_ptr_;
 
-  // realtime_tools::RealtimeBuffer<std::shared_ptr<ResetFaultSrv::Request>> rt_reset_fault_srv_ptr_;
   rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr reset_fault_srv_ptr_;
 
   realtime_tools::RealtimeBuffer<std::shared_ptr<SetDriveStatesSrv::Request>> rt_sds_srv_ptr_;
@@ -155,9 +167,6 @@ protected:
 
   void set_moo_action_execute(const std::shared_ptr<GoalHandleSetModesOfOperationAction>& goal_handle);
 };
-
-
-
 
 }  // namespace ethercat_controllers
 

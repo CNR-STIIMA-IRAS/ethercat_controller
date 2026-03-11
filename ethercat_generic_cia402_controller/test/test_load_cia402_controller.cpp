@@ -1,3 +1,4 @@
+// Copyright 2026 CNR-STIIMA
 // Copyright 2023 ICUBE Laboratory, University of Strasbourg
 //
 // Licensed under the Apache License, Version 2.0 (the "License");

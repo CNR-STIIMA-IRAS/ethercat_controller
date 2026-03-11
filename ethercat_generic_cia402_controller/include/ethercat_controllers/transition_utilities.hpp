@@ -1,5 +1,20 @@
-#ifndef ETHERCAT_CONTROLLERS__TRANSITION_UTILITIES_HPP_
-#define ETHERCAT_CONTROLLERS__TRANSITION_UTILITIES_HPP_
+// Copyright 2026, CNR-STIIMA
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#ifndef ETHERCAT_GENERIC_CIA402_CONTROLLER__TRANSITION_UTILITIES__HPP
+#define ETHERCAT_GENERIC_CIA402_CONTROLLER__TRANSITION_UTILITIES__HPP
+
 #include <memory>
 #include <string>
 #include <vector>
@@ -135,33 +150,42 @@ CommandID to_commandid( const TransitionID& transition )
 }
 
 
-typedef std::map< uint8_t, FeasibleStateTransitions >     StateTransitionFeasibilityMap;
+typedef std::map< uint8_t, FeasibleStateTransitions > StateTransitionFeasibilityMap;
 static const StateTransitionFeasibilityMap STATE_TRANSITIONS_MAP = { 
-    {ethercat_controller_msgs::msg::Cia402DriveStates::STATE_START                , { std::make_pair(TRANSITION_LOOPBACK   , ethercat_controller_msgs::msg::Cia402DriveStates::STATE_START              )   
-                                                                        ,   std::make_pair(TRANSITION_0_INTERNAL , ethercat_controller_msgs::msg::Cia402DriveStates::STATE_SWITCH_ON_DISABLED    ) } }
-  , {ethercat_controller_msgs::msg::Cia402DriveStates::STATE_NOT_READY_TO_SWITCH_ON  , { std::make_pair(TRANSITION_LOOPBACK   , ethercat_controller_msgs::msg::Cia402DriveStates::STATE_NOT_READY_TO_SWITCH_ON)
-                                                                        ,   std::make_pair(TRANSITION_1_INTERNAL , ethercat_controller_msgs::msg::Cia402DriveStates::STATE_SWITCH_ON_DISABLED    ) } }
-  , {ethercat_controller_msgs::msg::Cia402DriveStates::STATE_SWITCH_ON_DISABLED      , { std::make_pair(TRANSITION_LOOPBACK   , ethercat_controller_msgs::msg::Cia402DriveStates::STATE_SWITCH_ON_DISABLED    )
-                                                                        ,   std::make_pair(TRANSITION_2          , ethercat_controller_msgs::msg::Cia402DriveStates::STATE_READY_TO_SWITCH_ON    ) } }
-  , {ethercat_controller_msgs::msg::Cia402DriveStates::STATE_READY_TO_SWITCH_ON      , { std::make_pair(TRANSITION_LOOPBACK   , ethercat_controller_msgs::msg::Cia402DriveStates::STATE_READY_TO_SWITCH_ON    )
-                                                                        ,   std::make_pair(TRANSITION_3          , ethercat_controller_msgs::msg::Cia402DriveStates::STATE_SWITCH_ON           )
-                                                                        ,   std::make_pair(TRANSITION_7          , ethercat_controller_msgs::msg::Cia402DriveStates::STATE_SWITCH_ON_DISABLED           ) } }
-  , {ethercat_controller_msgs::msg::Cia402DriveStates::STATE_SWITCH_ON             , { std::make_pair(TRANSITION_LOOPBACK   , ethercat_controller_msgs::msg::Cia402DriveStates::STATE_SWITCH_ON           )
-                                                                        ,   std::make_pair(TRANSITION_4          , ethercat_controller_msgs::msg::Cia402DriveStates::STATE_OPERATION_ENABLED     ) 
-                                                                        ,   std::make_pair(TRANSITION_6          , ethercat_controller_msgs::msg::Cia402DriveStates::STATE_READY_TO_SWITCH_ON    ) 
-                                                                        ,   std::make_pair(TRANSITION_10         , ethercat_controller_msgs::msg::Cia402DriveStates::STATE_SWITCH_ON_DISABLED    ) } }
-  , {ethercat_controller_msgs::msg::Cia402DriveStates::STATE_OPERATION_ENABLED       , { std::make_pair(TRANSITION_LOOPBACK   , ethercat_controller_msgs::msg::Cia402DriveStates::STATE_OPERATION_ENABLED     )
-                                                                        ,   std::make_pair(TRANSITION_5          , ethercat_controller_msgs::msg::Cia402DriveStates::STATE_SWITCH_ON           ) 
-                                                                        ,   std::make_pair(TRANSITION_8          , ethercat_controller_msgs::msg::Cia402DriveStates::STATE_READY_TO_SWITCH_ON    ) 
-                                                                        ,   std::make_pair(TRANSITION_9          , ethercat_controller_msgs::msg::Cia402DriveStates::STATE_SWITCH_ON_DISABLED    ) 
-                                                                        ,   std::make_pair(TRANSITION_11         , ethercat_controller_msgs::msg::Cia402DriveStates::STATE_QUICK_STOP_ACTIVE     ) } }
-  , {ethercat_controller_msgs::msg::Cia402DriveStates::STATE_QUICK_STOP_ACTIVE       , { std::make_pair(TRANSITION_LOOPBACK   , ethercat_controller_msgs::msg::Cia402DriveStates::STATE_QUICK_STOP_ACTIVE     )
-                                                                        ,   std::make_pair(TRANSITION_12         , ethercat_controller_msgs::msg::Cia402DriveStates::STATE_SWITCH_ON_DISABLED    )
-                                                                        ,   std::make_pair(TRANSITION_16         , ethercat_controller_msgs::msg::Cia402DriveStates::STATE_OPERATION_ENABLED     ) } }
-  , {ethercat_controller_msgs::msg::Cia402DriveStates::STATE_FAULT_REACTION_ACTIVE   , { std::make_pair(TRANSITION_LOOPBACK   , ethercat_controller_msgs::msg::Cia402DriveStates::STATE_FAULT_REACTION_ACTIVE )
-                                                                        ,   std::make_pair(TRANSITION_14_INTERNAL, ethercat_controller_msgs::msg::Cia402DriveStates::STATE_NOT_READY_TO_SWITCH_ON) } }
-  , {ethercat_controller_msgs::msg::Cia402DriveStates::STATE_FAULT                   , { std::make_pair(TRANSITION_LOOPBACK   , ethercat_controller_msgs::msg::Cia402DriveStates::STATE_FAULT                 )
-                                                                        ,   std::make_pair(TRANSITION_15         , ethercat_controller_msgs::msg::Cia402DriveStates::STATE_SWITCH_ON_DISABLED    ) } }
+    {ethercat_controller_msgs::msg::Cia402DriveStates::STATE_START, 
+      { std::make_pair(TRANSITION_LOOPBACK   , ethercat_controller_msgs::msg::Cia402DriveStates::STATE_START              ),
+        std::make_pair(TRANSITION_0_INTERNAL , ethercat_controller_msgs::msg::Cia402DriveStates::STATE_SWITCH_ON_DISABLED ) } },
+    {ethercat_controller_msgs::msg::Cia402DriveStates::STATE_NOT_READY_TO_SWITCH_ON, 
+      { std::make_pair(TRANSITION_LOOPBACK   , ethercat_controller_msgs::msg::Cia402DriveStates::STATE_NOT_READY_TO_SWITCH_ON),
+        std::make_pair(TRANSITION_1_INTERNAL , ethercat_controller_msgs::msg::Cia402DriveStates::STATE_SWITCH_ON_DISABLED    ) } },
+    {ethercat_controller_msgs::msg::Cia402DriveStates::STATE_SWITCH_ON_DISABLED,
+      { std::make_pair(TRANSITION_LOOPBACK   , ethercat_controller_msgs::msg::Cia402DriveStates::STATE_SWITCH_ON_DISABLED ),
+        std::make_pair(TRANSITION_2          , ethercat_controller_msgs::msg::Cia402DriveStates::STATE_READY_TO_SWITCH_ON ) } },
+    {ethercat_controller_msgs::msg::Cia402DriveStates::STATE_READY_TO_SWITCH_ON,
+      { std::make_pair(TRANSITION_LOOPBACK   , ethercat_controller_msgs::msg::Cia402DriveStates::STATE_READY_TO_SWITCH_ON ),
+        std::make_pair(TRANSITION_3          , ethercat_controller_msgs::msg::Cia402DriveStates::STATE_SWITCH_ON          ),
+        std::make_pair(TRANSITION_7          , ethercat_controller_msgs::msg::Cia402DriveStates::STATE_SWITCH_ON_DISABLED ) } },
+    {ethercat_controller_msgs::msg::Cia402DriveStates::STATE_SWITCH_ON,
+      { std::make_pair(TRANSITION_LOOPBACK   , ethercat_controller_msgs::msg::Cia402DriveStates::STATE_SWITCH_ON          ),
+        std::make_pair(TRANSITION_4          , ethercat_controller_msgs::msg::Cia402DriveStates::STATE_OPERATION_ENABLED  ),
+        std::make_pair(TRANSITION_6          , ethercat_controller_msgs::msg::Cia402DriveStates::STATE_READY_TO_SWITCH_ON ),
+        std::make_pair(TRANSITION_10         , ethercat_controller_msgs::msg::Cia402DriveStates::STATE_SWITCH_ON_DISABLED ) } },
+    {ethercat_controller_msgs::msg::Cia402DriveStates::STATE_OPERATION_ENABLED,
+      { std::make_pair(TRANSITION_LOOPBACK   , ethercat_controller_msgs::msg::Cia402DriveStates::STATE_OPERATION_ENABLED  ),
+        std::make_pair(TRANSITION_5          , ethercat_controller_msgs::msg::Cia402DriveStates::STATE_SWITCH_ON          ),
+        std::make_pair(TRANSITION_8          , ethercat_controller_msgs::msg::Cia402DriveStates::STATE_READY_TO_SWITCH_ON ),
+        std::make_pair(TRANSITION_9          , ethercat_controller_msgs::msg::Cia402DriveStates::STATE_SWITCH_ON_DISABLED ),
+        std::make_pair(TRANSITION_11         , ethercat_controller_msgs::msg::Cia402DriveStates::STATE_QUICK_STOP_ACTIVE  ) } },
+    {ethercat_controller_msgs::msg::Cia402DriveStates::STATE_QUICK_STOP_ACTIVE,
+      { std::make_pair(TRANSITION_LOOPBACK   , ethercat_controller_msgs::msg::Cia402DriveStates::STATE_QUICK_STOP_ACTIVE  ),
+        std::make_pair(TRANSITION_12         , ethercat_controller_msgs::msg::Cia402DriveStates::STATE_SWITCH_ON_DISABLED ),
+        std::make_pair(TRANSITION_16         , ethercat_controller_msgs::msg::Cia402DriveStates::STATE_OPERATION_ENABLED  ) } },
+    {ethercat_controller_msgs::msg::Cia402DriveStates::STATE_FAULT_REACTION_ACTIVE,
+      { std::make_pair(TRANSITION_LOOPBACK   , ethercat_controller_msgs::msg::Cia402DriveStates::STATE_FAULT_REACTION_ACTIVE ),
+        std::make_pair(TRANSITION_14_INTERNAL, ethercat_controller_msgs::msg::Cia402DriveStates::STATE_NOT_READY_TO_SWITCH_ON) } },
+    {ethercat_controller_msgs::msg::Cia402DriveStates::STATE_FAULT,
+      { std::make_pair(TRANSITION_LOOPBACK   , ethercat_controller_msgs::msg::Cia402DriveStates::STATE_FAULT                 ),
+        std::make_pair(TRANSITION_15         , ethercat_controller_msgs::msg::Cia402DriveStates::STATE_SWITCH_ON_DISABLED    ) } }
   };
 
 
@@ -187,4 +211,5 @@ static const TransitionIDStrings TRANSITIONID_STRINGS =
     , {TRANSITION_15            , "TRANSITION_15"}
     , {TRANSITION_16            , "TRANSITION_16"} };
 }  // namespace ethercat_controllers
-#endif
+
+#endif  // ETHERCAT_GENERIC_CIA402_CONTROLLER__TRANSITION_UTILITIES__HPP
