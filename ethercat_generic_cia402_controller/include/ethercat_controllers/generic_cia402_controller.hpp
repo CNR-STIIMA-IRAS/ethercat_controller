@@ -88,6 +88,9 @@ protected:
   std::vector<int16_t> status_words_;
   std::vector<bool> reset_faults_;
   uint8_t homing_sequence_step_ = 0;
+  std::vector<uint8_t> fault_reset_high_cycles_remaining_;
+  std::vector<uint8_t> fault_reset_low_cycles_remaining_;
+  std::vector<uint8_t> fault_reset_attempts_remaining_;
 
   bool forward_state(std::string& state);
   bool backward_state(std::string& state);

@@ -89,6 +89,9 @@ CallbackReturn CiA402Controller::on_configure(
   mode_ops_.resize(dof_names_.size(), std::numeric_limits<int>::quiet_NaN());
   control_words_.resize(dof_names_.size(), 0);
   reset_faults_.resize(dof_names_.size(), false);
+  fault_reset_high_cycles_remaining_.resize(dof_names_.size(), 0);
+  fault_reset_low_cycles_remaining_.resize(dof_names_.size(), 0);
+  fault_reset_attempts_remaining_.resize(dof_names_.size(), 0);
 
   try {
     // register data publisher
@@ -259,6 +262,27 @@ controller_interface::return_type CiA402Controller::update(
 
   auto ok = true;
   constexpr uint16_t homing_start_bit = static_cast<uint16_t>(1u << 4);
+  constexpr uint16_t fault_reset_bit = static_cast<uint16_t>(1u << 7);
+  constexpr uint8_t fault_reset_pulse_cycles = 5;
+  constexpr uint8_t fault_reset_low_cycles = 5;
+  constexpr uint8_t fault_reset_max_attempts = 3;
+
+  auto schedule_fault_reset_pulse = [&](std::size_t index, uint16_t actual_state, uint16_t target_state) {
+    if (
+      actual_state == ethercat_controller_msgs::msg::Cia402DriveStates::STATE_FAULT &&
+      target_state == ethercat_controller_msgs::msg::Cia402DriveStates::STATE_SWITCH_ON_DISABLED &&
+      fault_reset_high_cycles_remaining_[index] == 0 &&
+      fault_reset_low_cycles_remaining_[index] == 0 &&
+      fault_reset_attempts_remaining_[index] == 0)
+    {
+      fault_reset_high_cycles_remaining_[index] = fault_reset_pulse_cycles;
+      fault_reset_attempts_remaining_[index] = fault_reset_max_attempts;
+      RCLCPP_INFO(
+        get_node()->get_logger(),
+        "Start fault reset pulse sequence for %s",
+        dof_names_[index].c_str());
+    }
+  };
 
   if (homing_request && (*homing_request)) {
     homing_sequence_step_ = 1;
@@ -314,6 +338,7 @@ controller_interface::return_type CiA402Controller::update(
             command_interfaces_[3 * i].get_value()
 #endif
               );
+          schedule_fault_reset_pulse(i, actual_state, st);
 
         }
       }
@@ -333,8 +358,54 @@ controller_interface::return_type CiA402Controller::update(
               command_interfaces_[3 * i].get_value()
   #endif
               );
+          schedule_fault_reset_pulse(i, actual_state, st);
 
         }
+      }
+    }
+
+    if (
+      actual_state_[i] != ethercat_controller_msgs::msg::Cia402DriveStates::STATE_FAULT &&
+      (fault_reset_high_cycles_remaining_[i] > 0 ||
+      fault_reset_low_cycles_remaining_[i] > 0 ||
+      fault_reset_attempts_remaining_[i] > 0))
+    {
+      uint16_t cw = static_cast<uint16_t>(control_words_[i]);
+      cw &= static_cast<uint16_t>(~fault_reset_bit);
+      control_words_[i] = static_cast<double>(cw);
+      fault_reset_high_cycles_remaining_[i] = 0;
+      fault_reset_low_cycles_remaining_[i] = 0;
+      fault_reset_attempts_remaining_[i] = 0;
+      RCLCPP_INFO(
+        get_node()->get_logger(),
+        "Fault reset accepted by %s. Control word: %u (0x%04x)",
+        dof_names_[i].c_str(),
+        cw,
+        cw);
+    } else if (
+      actual_state_[i] == ethercat_controller_msgs::msg::Cia402DriveStates::STATE_FAULT &&
+      fault_reset_high_cycles_remaining_[i] > 0)
+    {
+      uint16_t cw = static_cast<uint16_t>(control_words_[i]);
+      cw |= fault_reset_bit;
+      control_words_[i] = static_cast<double>(cw);
+      fault_reset_high_cycles_remaining_[i]--;
+      if (fault_reset_high_cycles_remaining_[i] == 0) {
+        if (fault_reset_attempts_remaining_[i] > 0) {
+          fault_reset_attempts_remaining_[i]--;
+        }
+        fault_reset_low_cycles_remaining_[i] = fault_reset_low_cycles;
+      }
+    } else if (fault_reset_low_cycles_remaining_[i] > 0) {
+      uint16_t cw = static_cast<uint16_t>(control_words_[i]);
+      cw &= static_cast<uint16_t>(~fault_reset_bit);
+      control_words_[i] = static_cast<double>(cw);
+      fault_reset_low_cycles_remaining_[i]--;
+      if (
+        fault_reset_low_cycles_remaining_[i] == 0 &&
+        fault_reset_attempts_remaining_[i] > 0)
+      {
+        fault_reset_high_cycles_remaining_[i] = fault_reset_pulse_cycles;
       }
     }
 #ifdef JAZZY_COMPATIBILITY
