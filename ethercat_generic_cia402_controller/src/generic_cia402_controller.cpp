@@ -21,7 +21,6 @@
 #include <utility>
 #include <vector>
 #include <chrono>
-#include <bitset>
 
 #include "rclcpp/logging.hpp"
 #include "rclcpp/qos.hpp"
@@ -259,6 +258,12 @@ controller_interface::return_type CiA402Controller::update(
   auto sds_request = rt_sds_srv_ptr_.readFromRT();
 
   auto ok = true;
+  constexpr uint16_t homing_start_bit = static_cast<uint16_t>(1u << 4);
+
+  if (homing_request && (*homing_request)) {
+    homing_sequence_step_ = 1;
+    rt_homing_srv_ptr_.reset();
+  }
 
   for (auto i = 0ul; i < dof_names_.size(); i++) {
     if (!moo_request || !(*moo_request)) {
@@ -273,23 +278,26 @@ controller_interface::return_type CiA402Controller::update(
       }
     }
 
-    if (homing_request && (*homing_request)) {
-      for (auto i = 0ul; i < dof_names_.size(); i++) {
-        uint16_t cw = static_cast<uint16_t>(control_words_[i]);
-        cw |= (1 << 4);
-        std::cout << "Perfom homing Control Word:  " << cw << "(0x" << std::hex << cw << "  - 0b" << std::bitset<16>{cw} << ")" << std::endl;
-        control_words_[i] = static_cast<double>(cw);
-        RCLCPP_INFO(get_node()->get_logger(),"Set control world: %f", control_words_[i]);
-      }
-      rt_homing_srv_ptr_.reset();
-    }
-    else
-    {
-      // for (auto i = 0ul; i < dof_names_.size(); i++) {
-      //   uint16_t cw = static_cast<uint16_t>(control_words_[i]);
-      //   cw &= ~(1 << 4);
-      //   control_words_[i] = static_cast<double>(cw);
-      // }
+    if (homing_sequence_step_ == 1) {
+      uint16_t cw = static_cast<uint16_t>(control_words_[i]);
+      cw &= static_cast<uint16_t>(~homing_start_bit);
+      control_words_[i] = static_cast<double>(cw);
+      RCLCPP_INFO(
+        get_node()->get_logger(),
+        "Clear homing start bit for %s. Control word: %u (0x%04x)",
+        dof_names_[i].c_str(),
+        cw,
+        cw);
+    } else if (homing_sequence_step_ == 2) {
+      uint16_t cw = static_cast<uint16_t>(control_words_[i]);
+      cw |= homing_start_bit;
+      control_words_[i] = static_cast<double>(cw);
+      RCLCPP_INFO(
+        get_node()->get_logger(),
+        "Start homing for %s. Control word: %u (0x%04x)",
+        dof_names_[i].c_str(),
+        cw,
+        cw);
     }
 
     if (sds_request && (*sds_request)) {
@@ -341,6 +349,12 @@ controller_interface::return_type CiA402Controller::update(
     reset_faults_[i] = false;
   }
   rt_sds_srv_ptr_.reset();
+
+  if (homing_sequence_step_ == 1) {
+    homing_sequence_step_ = 2;
+  } else if (homing_sequence_step_ == 2) {
+    homing_sequence_step_ = 0;
+  }
 
 
   return ok ? controller_interface::return_type::OK : controller_interface::return_type::ERROR;
@@ -879,7 +893,7 @@ void CiA402Controller::perform_homing_callback(const std::shared_ptr<std_srvs::s
   RCLCPP_INFO(get_node()->get_logger(), "Received homing service request");
 
   response->success = true;
-  response->message = "All drives are in operation disabled state";
+  response->message = "Homing request transmitted to drive";
 }
 
 

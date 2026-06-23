@@ -17,6 +17,7 @@
 #ifndef ETHERCAT_CONTROLLERS__GENERIC_CIA402_CONTROLLER_HPP_
 #define ETHERCAT_CONTROLLERS__GENERIC_CIA402_CONTROLLER_HPP_
 
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <vector>
@@ -86,6 +87,7 @@ protected:
   std::vector<double> control_words_;
   std::vector<int16_t> status_words_;
   std::vector<bool> reset_faults_;
+  uint8_t homing_sequence_step_ = 0;
 
   bool forward_state(std::string& state);
   bool backward_state(std::string& state);
